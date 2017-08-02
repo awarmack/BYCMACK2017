@@ -1,7 +1,4 @@
----
-title: "README"
-output: html_document
----
 
 #BYC Port Huron to Mackinaw 2017
+
 ##An Analysis of Zubenelgenubi's performance in the 2017 Bayview Yacht Club Port Huron to Mackinaw Race
