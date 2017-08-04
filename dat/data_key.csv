@@ -1,0 +1,33 @@
+Variable Name,Description,Units,Data Source,NMEA Sentence
+AWA,Apparent Wind Angle,kts,Raymarine ST60,$IIMWV
+AWS,Apparent Wind Speed,kts,Raymarine ST60,$IIMWV
+STW,Speed Through Water,kts,Raymarine ST60,$IIVHW
+CM.MILES,Cumulative Miles Travelled,nm,Raymarine ST60,$IIVLW
+MTW,Water Temperature,Deg C,Raymarine ST60,$IIMTW
+BOD.T,Bearing from Waypoint to Waypoint TRUE,Deg,Garmin GPSMAPS,$GPBOD
+BOD.M,Bearing from Waypoint to Waypoint MAG,Deg,Garmin GPSMAPS,$GPBOD
+BOD.WPT,Waypoint Name,char,Garmin GPSMAPS,$GPBOD
+WPT.LAT,Waypoint Latitude,Deg,Garmin GPSMAPS,$GPBWC
+WPT.LON,Waypoint Longitude,Deg,Garmin GPSMAPS,$GPBWC
+BWC.T,Bearing to Waypoint TRUE,Deg,Garmin GPSMAPS,$GPBWC
+BWC.M,Bearing to Waypoint MAG,Deg,Garmin GPSMAPS,$GPBWC
+WPT.DIS,Distance to Waypoint,nm,Garmin GPSMAPS,$GPBWC
+BWC.WPT,Waypoint Name,char,Garmin GPSMAPS,$GPBWC
+GPS.TIME,Current UTC time,hhmmss,Garmin GPSMAPS,$GPGGA
+GGA.LAT,Current Latitude,Deg,Garmin GPSMAPS,$GPGGA
+GGA.LON,Current Longitude,Deg,Garmin GPSMAPS,$GPGGA
+GPS.QUAL,GPS Quality,Factor,Garmin GPSMAPS,$GPGGA
+NO.SAT,Number of Satillites in View,Count,Garmin GPSMAPS,$GPGGA
+PREC,GPS Precision,Meters,Garmin GPSMAPS,$GPGGA
+ANT.ALT,GPS Altitude,Meters,Garmin GPSMAPS,$GPGGA
+GEO.SEP,GPS Geoidal seperation,Meters,Garmin GPSMAPS,$GPGGA
+XTE,Cross-Track Error,nm,Garmin GPSMAPS,$GPRMB
+RMC.TIME,Current UTC time,hhmmss,Garmin GPSMAPS,$GPRMC
+RMC.SOG,Speed Over Ground,kts,Garmin GPSMAPS,$GPRMC
+RMC.TMG,Track Made Good,Deg,Garmin GPSMAPS,$GPRMC
+RMC.DATE,Current Date,DDMMYY,Garmin GPSMAPS,$GPRMC
+GPS.SOG,GPS Speed Over Ground,kts,Garmin GPSMAPS,$GPVTG
+GPS.COG,GPS Course Over Ground,Deg,Garmin GPSMAPS,$GPVTG
+HPE,Horizontal Position Error,Meters,Garmin GPSMAPS,$PGRME
+VPE,Vertical Position Error,Meters,Garmin GPSMAPS,$PGRME
+SPE,Spheroidical Position Error,Meters,Garmin GPSMAPS,$PGRME
