@@ -88,4 +88,42 @@ perf$TWS.range <- factor(perf$TWS.range, levels=rev(levels(perf$TWS.range)))
 perf$AWA.range <- cut(perf$AWA, breaks=seq(0,180, by=30))
 perf$TWA.range <- cut(perf$AWA, breaks=seq(0,180, by=30))
 
+library(akima)
+library(dplyr)
+
+#load Polars
+polars <- read.csv("./dat/polars/fullpolar.csv")
+
+#remove optimum points
+opt <- polars[grep("OPT", polars$SAIL), ]
+polars <- polars[-grep("OPT", polars$SAIL),  ]
+
+#get the maximum V (velocity) for each wind speed and angle
+pol <- polars %>% group_by(VTW, BTW) %>% summarise(V=max(V))
+
+#rejoin to the sail and heel data
+pol <- left_join(pol, polars)
+
+#pol.0 <- data.frame(VTW = 0, BTW = 32:180, V=0, VAW=0, BAW=0, VMG=0, PHI=0, SAIL="Jib")
+
+#pol <- rbind(pol, pol.0)
+
+
+# get the polar targets
+pol.targets <- interpp(x=pol$VTW, 
+                       y=pol$BTW, 
+                       z=pol$V, 
+                       xo = perf$TWS, 
+                       yo= perf$TWA,
+                       linear=FALSE,
+                       extrap=FALSE,
+                       duplicate = "mean")
+
+#Calculate Measurables
+perf$target.SOG <- pol.targets$z
+perf$diff.SOG <- perf$SOG - perf$target.SOG
+perf$pol.perc <- (perf$SOG / perf$target.SOG) * 100
+
+
+
 write.csv(perf, "./dat/data_byminute.csv", row.names = FALSE)
