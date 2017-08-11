@@ -1,9 +1,9 @@
 ---
 title: "BYC Port Huron to Mackinac 2017"
 fig_width: 10
-output:
+output: 
   html_document: default
-  pdf_document: default
+
 fig_height: 8
 ---
 
