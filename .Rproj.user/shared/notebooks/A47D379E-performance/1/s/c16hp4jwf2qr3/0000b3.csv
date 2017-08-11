@@ -1,0 +1,6 @@
+"0","ggplot(perf, aes(pol.perc)) + "
+"0","  geom_histogram(binwidth=2.5, color=""black"") + "
+"0","  scale_x_continuous(name=""% of Target Speed"", breaks=seq(20,120,by=5))+"
+"0","  ggtitle(""Overall Distribution of Performance v. Polar"")+"
+"0","  geom_vline(xintercept=mean(perf$pol.perc, na.rm = TRUE), color=""Red"", linetype=2, size=1)+"
+"0","  geom_text(x=mean(perf$pol.perc), y=Inf, label=round(mean(perf$pol.perc,2, na.rm = TRUE),2), vjust=1)"

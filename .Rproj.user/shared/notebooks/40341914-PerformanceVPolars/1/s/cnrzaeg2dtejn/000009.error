@@ -1,0 +1,1 @@
+{"frames":[{"character_number":0,"end_character_number":0,"end_line_number":0,"file":"","func":"setwd(\"~/Dropbox/projects/sailing/BYCMACK2017\")","line_number":0}],"message":"Error in setwd(\"~/Dropbox/projects/sailing/BYCMACK2017\") : \n  cannot change working directory\n"}

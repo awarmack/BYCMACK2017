@@ -1,0 +1,7 @@
+"0","ggplot() + "
+"0","  geom_point(data=perf,  aes(x=TWA, y=SOG, color=TWS), alpha=0.7) + "
+"0","  coord_polar(""x"") + "
+"0","  scale_x_continuous(limits=c(0,360), breaks=seq(0,360, 15))+"
+"0","  scale_y_continuous(limits=c(0,8), breaks=seq(0,8, by=2))+"
+"0","  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,30, 5))+"
+"0","  ggtitle(""SOG for given True Wind Angle and Wind Speed"")"

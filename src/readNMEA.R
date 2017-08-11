@@ -248,7 +248,7 @@ print(end_time)
 
 write.csv(alldat, "./dat/all_data.csv", row.names=FALSE, na="")
 
-
+save(file="./dat/alldat.RData", list = c("alldat", "mwv", "stw", "vlw", "mtw", "bod", "bwc", "gga", "xte", "rmc", "vtg", "rme") )
 
 
 

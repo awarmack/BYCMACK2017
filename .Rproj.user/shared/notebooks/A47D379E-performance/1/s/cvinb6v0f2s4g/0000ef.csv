@@ -1,0 +1,5 @@
+"0","#APPARENT WIND"
+"0","ggplot(perf, aes(AWA)) + "
+"0","  geom_histogram(aes(fill=AWS.range)) + "
+"0","  scale_x_continuous(name=""Apparent Wind Angle [Deg]"")+"
+"0","  scale_y_discrete(name=""AWS [kts]"")"

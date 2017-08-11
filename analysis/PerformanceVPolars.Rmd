@@ -1,0 +1,23 @@
+---
+title: "Polar Analysis vs. Actual Performance"
+output: html_notebook
+---
+
+
+```{r}
+setwd("~/Dropbox/projects/sailing/BYCMACK2017")
+library(ggplot2)
+source("~/Dropbox/projects/sailing/BYCMACK2017/src/loadPolars.R")
+
+ggplot() + 
+  geom_path(data=pol, aes(x=BAW, y=V, color=VTW, group=VTW), size=1) + 
+  coord_polar("x") + 
+  scale_color_gradientn(colors=rainbow(5), breaks=c(0, 6, 8, 10, 12, 16, 20, 24)) + 
+  scale_x_continuous(limits=c(0,360), breaks=seq(0,360, 15)) + 
+  geom_vline(xintercept=0)+
+  geom_vline(xintercept=90)+
+  geom_vline(xintercept=180)+
+  geom_vline(xintercept=270)+
+  ggtitle("Boat SOG by VTW(Velocity True Wind)")
+
+```

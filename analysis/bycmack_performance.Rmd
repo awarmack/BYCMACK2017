@@ -1,0 +1,504 @@
+---
+title: "BYCMACK2017 Zubenelgenubi Performance"
+output: github_document
+---
+
+
+```{r load data, message=FALSE, warning=FALSE, cache=TRUE, include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+knitr::opts_chunk$set(message=FALSE)
+
+
+library(dplyr)
+library(tidyr)
+options(scipen=999)
+
+getwd()
+#Summarise by second, 5 seconds
+rm(list=ls())
+
+load("../dat/alldat.RDATA")
+
+
+#summarise by minute
+
+alldat$TIME.M <- as.POSIXct(round(alldat$TIME.S, "mins"))
+alldat$TIME.S <- as.POSIXct(round(alldat$TIME.S, "secs"))
+
+#summarise Performance Data by Minute
+perf <- alldat %>% group_by(TIME.M) %>% summarise(SOG=mean(GPS.SOG, na.rm = TRUE), 
+                                                  AWS=mean(AWS, na.rm = TRUE), 
+                                                  AWA=mean(AWA, na.rm = TRUE), 
+                                                  COG=mean(GPS.COG, na.rm=TRUE), 
+                                                  LAT=mean(GGA.LAT, na.rm=TRUE),
+                                                  LON=mean(GGA.LON, na.rm=TRUE))
+
+#remove any over 180 and convert 
+perf$AWA[perf$AWA > 180] <- 360 - perf$AWA[perf$AWA > 180] 
+perf <- perf[perf$AWA > 0, ] 
+
+#convert Apparent to True
+getTrueWind <- function(AWS, AWA, SOG) { 
+  #outputs a list with 
+  # $tws = True Wind Speed
+  # $twa = True Wind Angle
+  
+  b <- AWA * (pi/180)
+  
+  #true wind speed
+  TWS <- sqrt(AWS^2 + SOG^2 - 2*AWS*SOG*cos(b))
+  
+  
+  calcTWA <- function(b, AWS.b, SOG.b, W){
+    if(b > 0 & b<2*pi) {
+
+      TWA <- acos(((AWS.b * cos(b)) - SOG.b)/W)
+
+    } else {
+      if(b > 2*pi) {
+        TWA <- NA
+      }
+
+      TWA <- -acos(AWS.b * cos(b) - SOG.b)
+
+    }
+
+    if(!is.na(TWA)){
+
+      TWA <- TWA*180/pi
+
+    }
+    return(TWA)
+  }
+  
+  TWA <- mapply(FUN=calcTWA, b, AWS, SOG, TWS)
+
+  x <- list(TWS=TWS, TWA=TWA)
+  
+  }
+
+tw <- getTrueWind(perf$AWS, perf$AWA, perf$SOG)
+perf$TWS <- tw$TWS
+perf$TWA <- tw$TWA
+
+
+#break wind speed into bins: 
+perf$AWS.range <- cut(perf$AWS, breaks=c(0, 6, 8, 10, 12, 16, 20, 24, 35))
+perf$AWS.range <- factor(perf$AWS.range, levels=rev(levels(perf$AWS.range)))
+perf$TWS.range <- cut(perf$TWS, breaks=c(0, 6, 8, 10, 12, 16, 20, 24, 35))
+perf$TWS.range <- factor(perf$TWS.range, levels=rev(levels(perf$TWS.range)))
+
+#break wind angle into bins:
+perf$AWA.range <- cut(perf$AWA, breaks=seq(0,180, by=30))
+perf$TWA.range <- cut(perf$AWA, breaks=seq(0,180, by=30))
+
+
+
+getTWD <- function(TWA, COG){
+  
+  TWD <- COG + TWA
+  
+}
+
+
+
+```
+
+
+#Our Route
+Unfortunately, the first battery ran out around 8pm on Saturday night. So, I could only capture from Harbor Beach to just before finish. 
+
+The replacement battery ran (26800 mah) for 31 hrs, so total draw was around 0.8 amps. 
+
+
+```{r plot path, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+library(ggmap)
+library(ggrepel)
+
+map_lims <- c(min(perf$LON), min(perf$LAT), max(perf$LON), max(perf$LAT)) 
+
+lkhuron <- get_map(location = map_lims, zoom=8)
+
+#time labels
+time_labs <- seq(round(head(perf$TIME.M, 1), units="hours"), tail(perf$TIME.M, 1), by="4 hour")
+
+
+time_labs <- perf[perf$TIME.M %in% time_labs, ]
+
+
+ggmap(lkhuron) + 
+  geom_path(data=perf, aes(x=LON, y=LAT), color="red", linetype=2, size=1) +
+  scale_color_gradientn(colors=rainbow(5), limits=c(0,10), breaks=seq(0,10, 2))+
+  geom_label_repel(data=time_labs, aes(x=LON, y=LAT, label=format(TIME.M, "%a %H:%M")), hjust=0, point.padding = unit(.8, "lines"))
+
+
+
+
+```
+
+
+
+## Wind Condition During Race
+
+```{r Wind Data, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggmap)
+#wind points
+wind_pts <- seq(round(head(perf$TIME.M, 1), units="hours"), tail(perf$TIME.M, 1), by="1 hour")
+
+
+wind_pts <- perf[perf$TIME.M %in% wind_pts, ]
+
+deg2rad <- function(deg){
+  
+  rad <- deg * pi/180
+  return(rad)
+}
+
+ggmap(lkhuron) + 
+  geom_point(data=wind_pts, aes(x=LON, y=LAT, color=TWS))+
+  geom_spoke(data=wind_pts, aes(x=LON, y=LAT, angle=deg2rad(TWA+COG), color=TWS), radius=0.1)+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,30, 5))+
+  ggtitle("True Wind Direction")
+
+# #APPARENT WIND
+# ggplot(perf, aes(AWA)) + 
+#   geom_histogram(aes(fill=AWS.range)) + 
+#   scale_x_continuous(name="Apparent Wind Angle [Deg]")+
+#   scale_y_discrete(name="AWS [kts]") +
+#   ggtitle("Apparent Wind Distribution")
+# 
+# #TRUE WIND
+# ggplot(perf, aes(TWA)) + 
+#   geom_histogram(aes(fill=TWS.range), position="stack") + 
+#   scale_x_continuous(name="True Wind Angle [Deg]")+
+#   scale_y_discrete(name="TWS [kts]") + 
+#   ggtitle("True Wind Distribution")
+
+
+
+ggplot(perf, aes(AWA, fill=AWS.range)) + geom_histogram(binwidth=10, position="stack") + coord_polar() + scale_x_continuous(limits=c(0,360), breaks=seq(0,360, by=15))+
+  ggtitle("Apparent Wind Distribution")
+
+ggplot(perf, aes(TWA, fill=TWS.range)) + geom_histogram(binwidth=10, position="stack") + coord_polar() + scale_x_continuous(limits=c(0,360), breaks=seq(0,360, by=15))+
+  ggtitle("True Wind Distribution")
+
+
+
+
+```
+
+
+
+#Boat Performance
+
+
+```{r Speed Over The Trip, echo=FALSE, message=FALSE, warning=FALSE}
+library(scales)
+library(ggrepel)
+
+ggmap(lkhuron) + 
+  geom_path(data=perf, aes(x=LON, y=LAT, color=SOG), size=2) +
+  scale_color_gradientn(colors=rainbow(5), limits=c(0,10), breaks=seq(0,10, 2))+
+  geom_label_repel(data=time_labs, aes(x=LON, y=LAT, label=format(TIME.M, "%a %H:%M")), hjust=0, point.padding = unit(1, "lines"))
+
+
+
+ggplot(perf) + 
+  geom_path(aes(x=TIME.M, y=SOG, color=SOG), size=1, lineend="round") +
+  ggtitle("GPS Speed Over Ground")+
+  scale_color_gradientn(colors=rainbow(5), limits=c(0,10), breaks=seq(0,10, 2), name="SOG [kts]")+
+  scale_x_datetime(breaks=date_breaks("2 hours"), date_labels = "%a %H:%M")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))
+
+
+
+
+ggplot(perf) + 
+  geom_path(aes(x=TIME.M, y=SOG, color=TWS), size=1, lineend="round") +
+  ggtitle("GPS Speed Over Ground by True Wind Speed")+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,30, 5), name="TWS [kts]")+
+  scale_x_datetime(breaks=date_breaks("2 hours"), date_labels = "%a %H:%M")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))
+  
+
+
+```
+Looking at the wind, we can see our wind speed dropped dramatically during this middle leg. 
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot() + 
+  geom_point(data=perf,  aes(x=AWA, y=SOG, color=AWS), alpha=0.7) + 
+  coord_polar("x") + 
+  scale_x_continuous(limits=c(0,360), breaks=seq(0,360, 15))+
+  scale_y_continuous(limits=c(0,8), breaks=seq(0,8, by=2))+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,30, 5))+
+  ggtitle("SOG for given Apparent Wind Angle and Wind Speed")
+
+ggplot() + 
+  geom_point(data=perf,  aes(x=TWA, y=SOG, color=TWS), alpha=0.7) + 
+  coord_polar("x") + 
+  scale_x_continuous(limits=c(0,360), breaks=seq(0,360, 15))+
+  scale_y_continuous(limits=c(0,8), breaks=seq(0,8, by=2))+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,30, 5))+
+  ggtitle("SOG for given True Wind Angle and Wind Speed")
+
+ggplot() + 
+ geom_histogram(data=perf, aes(SOG, fill=TWS.range), color="black") + facet_grid(TWS.range ~ TWA.range)+
+  ggtitle("SOG at different Wind Speed & Angle Ranges") 
+
+#+
+  #scale_color_gradientn(colors=rainbow(5), limits=c(0,10), breaks=seq(0,10, 2))
+ # scale_x_datetime(breaks=date_breaks("2 hours"), date_labels = "%a %H:%M")
+
+```
+We can see here that are speeds vary much more at lower wind speeds and when beating. Not too suprising. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+library(akima)
+library(dplyr)
+
+#load Polars
+polars <- read.csv("../dat/polars/fullpolar.csv")
+
+#remove optimum points
+opt <- polars[grep("OPT", polars$SAIL), ]
+polars <- polars[-grep("OPT", polars$SAIL),  ]
+
+#get the maximum V (velocity) for each wind speed and angle
+pol <- polars %>% group_by(VTW, BTW) %>% summarise(V=max(V))
+
+#rejoin to the sail and heel data
+pol <- left_join(pol, polars)
+
+#pol.0 <- data.frame(VTW = 0, BTW = 32:180, V=0, VAW=0, BAW=0, VMG=0, PHI=0, SAIL="Jib")
+
+#pol <- rbind(pol, pol.0)
+
+
+# get the polar targets
+pol.targets <- interpp(x=pol$VTW, 
+                       y=pol$BTW, 
+                       z=pol$V, 
+                       xo = perf$TWS, 
+                       yo= perf$TWA,
+                       linear=FALSE,
+                       extrap=FALSE,
+                       duplicate = "mean")
+
+#Calculate Measurables
+perf$target.SOG <- pol.targets$z
+perf$diff.SOG <- perf$SOG - perf$target.SOG
+perf$pol.perc <- (perf$SOG / perf$target.SOG) * 100
+
+
+targets <- expand.grid(TWS= seq(6, 35, by = 1), TWA=seq(30, 180, by=1))
+targets$target.sog <- interpp(x=pol$VTW, 
+                              y=pol$BTW, 
+                              z=pol$V, 
+                        xo = targets$TWS, 
+                        yo= targets$TWA,
+                        linear=TRUE,
+                        extrap=FALSE,
+                        duplicate = "mean")$z
+
+
+```
+
+#Performance VS Polars
+
+### Polar Model (using linear interpolation)
+I used a simple linear interpolation between points to estimate our target speed at a given TWS and TWA. 
+Any grey points are outside of the model and could not be estimated. 
+
+The below three graphs just show different views of the polar model.
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+
+ggplot()+
+  geom_raster(data=targets, aes(x=TWA, y=TWS, fill=target.sog), alpha=0.5)+
+  geom_point(data=pol, aes(x=BTW, y=VTW, color=V)) +
+  geom_path(data=pol, aes(x=BTW, y=VTW, group=VTW)) +
+  scale_x_continuous(limits=c(30,180), breaks=seq(30,180, 15))+
+  scale_y_continuous(limits=c(0,30), breaks=seq(0,30, by=2))+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,10, 2), name="Target SOG[kts]")+
+  scale_fill_gradientn(colors=rainbow(5), breaks=seq(0,10, 12), name="Target SOG[kts]")+
+  ggtitle("Expected SOG by TWA and TWS")
+
+print("The black lines are the data values provided by ORA")
+
+ggplot()+
+  geom_point(data=targets, aes(x=TWA, y=target.sog, color=target.sog))+
+  geom_path(data=pol, aes(x=BTW, y=V, group=VTW))+
+  #coord_polar()+
+  scale_x_continuous(limits=c(30,180), breaks=seq(0,180, 15))+
+  scale_y_continuous(limits=c(0,10), breaks=seq(0,10, by=2))+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,10, 1), name="Target SOG[kts]") +
+  ggtitle("Expected SOG by TWA")
+
+ggplot()+
+  geom_point(data=targets, aes(x=TWA, y=target.sog, color=target.sog))+
+  geom_path(data=pol, aes(x=BTW, y=V, group=VTW, linetype="TWS"))+
+  coord_polar()+
+  scale_x_continuous(limits=c(0,360), breaks=seq(0,360, 15))+
+  scale_y_continuous(limits=c(0,10), breaks=seq(0,10, by=2))+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,10, 1), name="Target SOG[kts]")+
+  ggtitle("Polar View of Expected SOG by TWA")+
+  scale_linetype(name="Polar Data")
+
+
+```
+
+##Observed Performance
+Our actual performance versus the polar. 
+
+In general it seems like we did pretty well to our polars. The biggest defficiencies were at slower speeds under 10 kts.  Not too suprising. 
+
+Unforatunately, about 20% of the data couldn't be estimated by the model. I'm working on this. 
+
+We averaged 93.67% of our polar. A reasonable target is 95%. 
+
+```{r plot polars, echo=FALSE, message=FALSE, warning=FALSE}
+
+pol_labels <- pol[pol$BTW==180, ]
+
+ggplot()+
+  geom_raster(data=targets, aes(x=TWA, y=TWS, fill=target.sog), alpha=0.5)+
+  geom_point(data=pol, aes(x=BTW, y=VTW, color=V)) +
+  geom_path(data=pol, aes(x=BTW, y=VTW, group=VTW)) +
+  geom_point(data=perf, aes(x=TWA, y=TWS, color=SOG))+
+  scale_x_continuous(limits=c(30,180), breaks=seq(30,180, 15))+
+  scale_y_continuous(limits=c(0,30), breaks=seq(0,30, by=2))+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,10, 2), name="Target SOG[kts]", na.value = "black")+
+  scale_fill_gradientn(colors=rainbow(5), breaks=seq(0,10, 12), name="Target SOG[kts]")+
+  ggtitle("Observed SOG by TWA and TWS")
+
+
+ggplot() + 
+  geom_path(data=pol, aes(x=BTW, y=V, group=VTW)) + 
+  #coord_polar("x") + 
+  scale_x_continuous(limits=c(0,180), breaks=seq(0,180, 15), name="True Wind Angle") + 
+  scale_y_continuous(name="SOG", limits=c(0,9))+
+  geom_vline(xintercept=0)+
+  geom_vline(xintercept=90)+
+  geom_vline(xintercept=180)+
+  geom_vline(xintercept=270)+
+  ggtitle("% of Polar Performance by AWA")+
+  geom_point(data=perf, aes(x=AWA, y=SOG, color=pol.perc), alpha=0.5)+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,120, by=20), name= "% of Target")+
+  geom_text(data=pol_labels, aes(x=BTW, y=V, label=VTW), hjust=0)
+
+ggplot() + 
+  geom_path(data=pol, aes(x=BTW, y=V, group=VTW)) + 
+  coord_polar("x") + 
+  scale_x_continuous(limits=c(0,360), breaks=seq(0,360, 15), name="True Wind Angle") + 
+  scale_y_continuous(name="SOG", limits=c(0,9))+
+  geom_vline(xintercept=0)+
+  geom_vline(xintercept=90)+
+  geom_vline(xintercept=180)+
+  geom_vline(xintercept=270)+
+  ggtitle("% of Polar Performance by AWA")+
+  geom_point(data=perf, aes(x=AWA, y=SOG, color=pol.perc), alpha=0.5)+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,120, by=20), name= "% of Target")+
+  geom_text(data=pol_labels, aes(x=BTW, y=V, label=VTW), hjust=1)
+
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(perf) + 
+  geom_path(aes(x=TIME.M, y=SOG, color=pol.perc), size=1, lineend="round") +
+  ggtitle("GPS Speed Over Ground vs. Target")+
+  scale_color_gradientn(colors=rainbow(5), breaks=seq(0,120, by=10), name= "% of Target")+
+  scale_x_datetime(breaks=date_breaks("2 hours"), date_labels = "%a %H:%M")+
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))+
+  geom_path(aes(x=TIME.M, y=target.SOG, linetype="Target SOG"))+scale_linetype(name="Polars")
+
+```
+
+```{r histogram of Polar Performance, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(perf, aes(pol.perc)) + 
+  geom_histogram(binwidth=2.5, color="black") + 
+  scale_x_continuous(name="% of Target Speed", breaks=seq(20,120,by=5))+
+  ggtitle("Overall Distribution of Performance v. Polar")+
+  geom_vline(xintercept=mean(perf$pol.perc, na.rm = TRUE), color="Red", linetype=2, size=1)+
+  geom_text(x=mean(perf$pol.perc), y=Inf, label=round(mean(perf$pol.perc,2, na.rm = TRUE),2), vjust=1)
+
+print(paste("Mean Performance = ", round(mean(perf$pol.perc,2, na.rm = TRUE),2), "%"))
+
+ggplot(perf, aes(pol.perc, fill=TWS.range)) + 
+  geom_histogram(binwidth=2.5,position="stack", color="black") + 
+  scale_x_continuous(name="% of Target Speed", breaks=seq(20,120,by=5)) +
+  facet_grid(TWS.range ~ .)+
+  ggtitle("Polar Performance at different Wind Speed Ranges")
+
+
+ggplot(perf, aes(y=pol.perc, x=TWS.range, fill=TWS.range)) + 
+  geom_hline(yintercept=95)+
+  geom_boxplot() + 
+  scale_y_continuous(name="% of Target Speed", breaks=seq(20,120,by=5)) + 
+  ggtitle("Polar Performance at different Wind Speed Ranges")
+  
+
+ggplot(perf, aes(pol.perc, fill=TWA.range)) + 
+  geom_histogram(binwidth=2.5,position="stack", color="black") + 
+  scale_x_continuous(name="% of Target Speed", breaks=seq(20,120,by=5)) +
+  facet_grid(TWA.range ~ .)+
+  ggtitle("Polar Performance at different Wind Speed Ranges")
+
+
+ggplot(perf, aes(y=pol.perc, x=TWA.range, fill=TWA.range)) + 
+  geom_hline(yintercept=95)+
+  geom_boxplot() + 
+  scale_y_continuous(name="% of Target Speed", breaks=seq(20,120,by=5)) + 
+  ggtitle("Polar Performance at different Wind Speed Ranges")
+
+```
+
+
+#Calculation of Optimal finish time given same wind condition and course
+
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+mean.target.speed <- mean(perf$target.SOG, na.rm = TRUE)
+
+rhumb.length <- 205  #in NM
+
+estimated.elapsed <- rhumb.length / mean.target.speed
+
+paste("Optimal elapsed time", round(estimated.elapsed, 2), "hrs")  
+
+#actual estimated time 
+actual.elapsed <- 38 + 52/60 + 24/3600
+
+
+#time loss due under target
+paste("Time Diff between actual and optimal", round(actual.elapsed - estimated.elapsed, 2), "hrs")
+
+#corrected time
+orr <- .721
+
+paste("Corrected Optimal Time", round((estimated.elapsed * orr), 2), "hrs")
+
+```
+
+A corrected time of 23.22 would put us 4th in Section N and 10th in DII overall. 
+
+
+
+
+
+
+
+
