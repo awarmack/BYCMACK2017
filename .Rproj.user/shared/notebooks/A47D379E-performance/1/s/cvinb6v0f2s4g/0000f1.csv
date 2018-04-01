@@ -1,5 +1,0 @@
-"0","#TRUE WIND"
-"0","ggplot(perf, aes(TWA)) + "
-"0","  geom_histogram(aes(fill=TWS.range), position=""stack"") + "
-"0","  scale_x_continuous(name=""True Wind Angle [Deg]"")+"
-"0","  scale_y_discrete(name=""TWS [kts]"")"

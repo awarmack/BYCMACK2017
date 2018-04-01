@@ -1,2 +1,0 @@
-"0","ggplot(perf, aes(TWA, fill=TWS.range)) + geom_histogram(binwidth=10, position=""stack"") + coord_polar() + scale_x_continuous(limits=c(0,360), breaks=seq(0,360, by=15))+"
-"0","  ggtitle(""True Wind Distribution"")"

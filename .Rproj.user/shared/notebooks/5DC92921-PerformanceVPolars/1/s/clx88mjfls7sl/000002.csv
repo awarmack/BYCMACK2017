@@ -1,6 +1,0 @@
-"0","```r
-setwd(\"~/Dropbox/projects/sailing/BYCMACK2017\")
-```"
-"1","Error in setwd(\"~/Dropbox/projects/sailing/BYCMACK2017\") : 
-  cannot change working directory
-"
