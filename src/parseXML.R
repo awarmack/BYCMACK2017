@@ -5,22 +5,29 @@ library(xml2)
 #library(XML)
 library(tidyverse)
 
-yb_file<- "./dat/bayviewmack2017.xml"
-
-yb <- read_xml(yb_file)
-
-
-
-boats <- xml_find_all(yb, "//Device") %>% xml_attr("name")
- 
-
-### For Each Boat ###
-
+#Gets the value of each position text value
 get_values <- function(boat_path){
   datues <- xml_children(boat_path) %>% xml_text()
   return(datues)
 }
 
+#Takes the boat data and reformats it
+clean_boat_data <- function(dat){
+  
+  numeric_cols <- c("Latitude", "Longitude", "SOG", "COG")
+  date_cols <- c("GpsAt")
+  
+  dat <- dat %>% mutate_all(funs(as.character))
+  
+  dat <- dat %>% select("boat", date_cols, numeric_cols)
+  
+  dat <- dat %>% mutate_at(vars(numeric_cols), funs(as.numeric))
+  dat$GpsAt <- strptime(dat$GpsAt, "%FT%T", tz="UTC")
+  
+  return(dat)
+}
+
+#Combines the position data for each boat
 get_boat_data <- function(yb, target_boat){
   # extracts data for a single boat from yellowbrick data
   # Arguements
@@ -47,32 +54,31 @@ get_boat_data <- function(yb, target_boat){
   
   dat$boat <- target_boat
   
+  dat <- clean_boat_data(dat)
 
   return(dat)
 }
 
-
-clean_boat_data <- function(dat){
+#gets list of all boats
+get_boats <- function(yb){
   
-  numeric_cols <- c("Latitude", "Longitude", "SOG", "COG")
-  date_cols <- c("GpsAt")
-  
-  dat <- dat %>% mutate_all(funs(as.character))
-  
-  dat <- dat %>% select("boat", date_cols, numeric_cols)
-  
-  dat <- dat %>% mutate_at(vars(numeric_cols), funs(as.numeric))
-  dat$GpsAt <- strptime(test_date, "%FT%T", tz="UTC")
-  
-  return(dat)
+  boats <- xml_find_all(yb, "//Device") %>% xml_attr("name")
+  return(boats)
 }
 
-
-
-zub <- get_boat_data(yb, "Zubenelgenubi") %>% clean_boat_data()
-
-alb <- get_boat_data(yb, "Albacore") %>% clean_boat_data()
-
+#Returns a dataframe for all boats and positions for the given yb file
+parse_yb_XML <- function(yb_file){
+  
+  yb <- read_xml(yb_file)
+  
+  boats <- get_boats(yb)
+  
+  allboats <- lapply(boats, function(x) get_boat_data(yb, x))
+  
+  allboats <- do.call(rbind, allboats)
+  
+  return(allboats)
+}
 
 
 
